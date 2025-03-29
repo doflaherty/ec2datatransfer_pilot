@@ -69,3 +69,9 @@ Resources:
       TopicArn: !Ref EC2DataTransferSNSTopic
       Protocol: email
       Endpoint: darren.oflaherty@cgi.com
+Outputs:
+  FolderStructureFunctionArn:
+    Description: ARN of the S3FolderStructureCreator Lambda
+    Value: !GetAtt S3FolderStructureCreator.Arn
+    Export:
+      Name: FolderStructureFunctionArn
