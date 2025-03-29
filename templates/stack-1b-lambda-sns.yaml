@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack 1b - Lambda Functions and SNS for EC2 Data Transfer Automation
+
+Parameters:
+  TeamName:
+    Type: String
+    AllowedValues:
+      - enzen
+      - sgn
+      - cgi
+    Description: Team name used for dynamic naming and tagging.
+
+Resources:
+
+  SSMNotificationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: SSMNotification
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      Role: arn:aws:iam::557690595061:role/SGN-OPS-EC2DataTransfer-LambdaExecutionRole
+      Environment:
+        Variables:
+          SSM_NOTIFICATION_TOPIC_ARN: !Ref EC2DataTransferSNSTopic
+      Code:
+        ZipFile: |
+          import boto3, os
+          def lambda_handler(event, context):
+              sns = boto3.client("sns")
+              topic_arn = os.environ.get("SSM_NOTIFICATION_TOPIC_ARN")
+              response = sns.publish(
+                  TopicArn=topic_arn,
+                  Subject="SSM Automation Execution Started",
+                  Message=f"Execution ID: {event.get('ExecutionId')}\\nTeam: {event.get('Team')}\\nDirection: {event.get('Direction')}"
+              )
+              return {"SNSResponse": response}
+
+  S3FolderStructureCreator:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: S3FolderStructureCreator
+      Handler: index.lambda_handler
+      Runtime: python3.12
+      Role: arn:aws:iam::557690595061:role/SGN-OPS-EC2DataTransfer-LambdaExecutionRole
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import boto3
+          def lambda_handler(event, context):
+              s3 = boto3.client('s3')
+              bucket = event['ResourceProperties']['BucketName']
+              prefixes = [
+                  "Inbound/sgn/", "Inbound/enzen/", "Inbound/cgi/",
+                  "Outbound/sgn/", "Outbound/enzen/", "Outbound/cgi/",
+                  "Reports/sgn/", "Reports/enzen/", "Reports/cgi/"
+              ]
+              for prefix in prefixes:
+                  s3.put_object(Bucket=bucket, Key=prefix)
+              return {'Status': 'SUCCESS'}
+
+  EC2DataTransferSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: EC2DataTransferApproval
+
+  EC2DataTransferEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref EC2DataTransferSNSTopic
+      Protocol: email
+      Endpoint: darren.oflaherty@cgi.com
