@@ -1,0 +1,234 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack 1a - IAM Roles for EC2 Data Transfer Automation
+
+Parameters:
+  TeamName:
+    Type: String
+    AllowedValues:
+      - enzen
+      - sgn
+      - cgi
+    Description: Team name used for dynamic naming and tagging.
+
+Resources:
+
+  SGNGuardDutyEC2StagingProtectionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SGN-GuardDuty-EC2Staging-ProtectionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: guardduty.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SGN-GuardDuty-EC2Staging-InlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowPostScanTag
+                Effect: Allow
+                Action:
+                  - s3:PutObjectTagging
+                  - s3:GetObjectTagging
+                Resource: !Sub "arn:aws:s3:::${TeamName}-0ps-datatransfer/*"
+              - Sid: AllowMalwareScan
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${TeamName}-0ps-datatransfer"
+                  - !Sub "arn:aws:s3:::${TeamName}-0ps-datatransfer/*"
+              - Sid: AllowDecryptForMalwareScan
+                Effect: Allow
+                Action:
+                  - kms:GenerateDataKey
+                  - kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringLike:
+                    kms:ViaService: "s3.*.amazonaws.com"
+
+  SGNOPSAutomationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SGN-OPS-EC2DataTransfer-AutomationRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ssm.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SGN-OPS-EC2DataTransfer-InlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ssm:DescribeInstanceInformation
+                  - ssm:SendCommand
+                  - ssm:ListCommands
+                  - ssm:GetCommandInvocation
+                  - ssm:ListCommandInvocations
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                Resource: !Sub "arn:aws:s3:::${TeamName}-0ps-datatransfer/Reports/*"
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: "*"
+
+  SSMNotificationLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SGN-OPS-EC2DataTransfer-LambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SSMNotificationLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: "*"
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${TeamName}-0ps-datatransfer/*"
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack 1a - IAM Roles for EC2 Data Transfer Automation
+
+Parameters:
+  TeamName:
+    Type: String
+    AllowedValues:
+      - enzen
+      - sgn
+      - cgi
+    Description: Team name used for dynamic naming and tagging.
+
+Resources:
+
+  SGNGuardDutyEC2StagingProtectionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SGN-GuardDuty-EC2Staging-ProtectionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: guardduty.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SGN-GuardDuty-EC2Staging-InlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowPostScanTag
+                Effect: Allow
+                Action:
+                  - s3:PutObjectTagging
+                  - s3:GetObjectTagging
+                Resource: !Sub "arn:aws:s3:::${TeamName}-0ps-datatransfer/*"
+              - Sid: AllowMalwareScan
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${TeamName}-0ps-datatransfer"
+                  - !Sub "arn:aws:s3:::${TeamName}-0ps-datatransfer/*"
+              - Sid: AllowDecryptForMalwareScan
+                Effect: Allow
+                Action:
+                  - kms:GenerateDataKey
+                  - kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringLike:
+                    kms:ViaService: "s3.*.amazonaws.com"
+
+  SGNOPSAutomationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SGN-OPS-EC2DataTransfer-AutomationRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ssm.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SGN-OPS-EC2DataTransfer-InlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ssm:DescribeInstanceInformation
+                  - ssm:SendCommand
+                  - ssm:ListCommands
+                  - ssm:GetCommandInvocation
+                  - ssm:ListCommandInvocations
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                Resource: !Sub "arn:aws:s3:::${TeamName}-0ps-datatransfer/Reports/*"
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: "*"
+
+  SSMNotificationLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SGN-OPS-EC2DataTransfer-LambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SSMNotificationLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: "*"
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${TeamName}-0ps-datatransfer/*"
