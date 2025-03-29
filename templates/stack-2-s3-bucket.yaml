@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack 2 - S3 Bucket and GuardDuty Policy for EC2 Data Transfer
+
+Parameters:
+  TeamName:
+    Type: String
+    AllowedValues:
+      - enzen
+      - sgn
+      - cgi
+    Description: Team name used for naming the S3 bucket.
+
+Resources:
+
+  S3DataTransferBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${TeamName}-0ps-ec2staging"
+
+  S3DataTransferBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3DataTransferBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: NoReadExceptForClean
+            Effect: Deny
+            Principal: "*"
+            Action:
+              - "s3:GetObject"
+              - "s3:GetObjectVersion"
+            Resource: !Sub "arn:aws:s3:::${S3DataTransferBucket}/*"
+            Condition:
+              StringNotLike:
+                aws:PrincipalArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/SGN-GuardDuty-EC2Staging-ProtectionRole"
+              StringNotEquals:
+                s3:ExistingObjectTag/GuardDutyMalwareScanStatus: "NO_THREATS_FOUND"
+
+          - Sid: AllowAdminActionsForDatatran
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/SGN-GuardDuty-EC2Staging-ProtectionRole"
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:DeleteObject
+            Resource:
+              - !Sub "arn:aws:s3:::${S3DataTransferBucket}"
+              - !Sub "arn:aws:s3:::${S3DataTransferBucket}/*"
+
+  S3FolderStructureCustomResource:
+    Type: Custom::S3FolderSetup
+    Properties:
+      ServiceToken: !ImportValue FolderStructureFunctionArn
+      BucketName: !Ref S3DataTransferBucket
+
+Outputs:
+  S3Bucket:
+    Description: The team-specific S3 staging bucket
+    Value: !Ref S3DataTransferBucket

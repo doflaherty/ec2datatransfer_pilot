@@ -1,0 +1,78 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DenyReadUnlessClean",
+            "Effect": "Deny",
+            "Principal": "*",
+            "Action": [
+                "s3:GetObject",
+                "s3:GetObjectVersion"
+            ],
+            "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/*",
+            "Condition": {
+                "StringNotLike": {
+                    "aws:PrincipalArn": [
+                        "arn:aws:iam::869935110941:role/SGN-GuardDuty-EC2Staging-ProtectionRole",
+                        "arn:aws:iam::557690595061:role/SGN-OPS-EC2DataTransfer-AutomationRole"
+                    ]
+                },
+                "StringNotEquals": {
+                    "s3:ExistingObjectTag/GuardDutyMalwareScanStatus": "NO_THREATS_FOUND"
+                }
+            }
+        },
+        {
+            "Sid": "AllowAutomationRolePut",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::557690595061:role/SGN-OPS-EC2DataTransfer-AutomationRole"
+            },
+            "Action": [
+                "s3:PutObject",
+                "s3:PutObjectTagging",
+                "s3:GetObjectTagging"
+            ],
+            "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/*"
+        },
+        {
+            "Sid": "AllowAutomationRoleList",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::557690595061:role/SGN-OPS-EC2DataTransfer-AutomationRole"
+            },
+            "Action": "s3:ListBucket",
+            "Resource": "arn:aws:s3:::sgn-0ps-ec2staging"
+        },
+        {
+            "Sid": "AllowGuardDutyFull",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::869935110941:role/SGN-GuardDuty-EC2Staging-ProtectionRole"
+            },
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::sgn-0ps-ec2staging",
+                "arn:aws:s3:::sgn-0ps-ec2staging/*"
+            ]
+        },
+        {
+            "Sid": "AllowEC2InstanceRolePut",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::557690595061:role/sgn_role_ec2_maximo_web"
+            },
+            "Action": [
+                "s3:PutObject",
+                "s3:PutObjectTagging",
+                "s3:GetObjectTagging"
+            ],
+            "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/*"
+        }
+    ]
+}
