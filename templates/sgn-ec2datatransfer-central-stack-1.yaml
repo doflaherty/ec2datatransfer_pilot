@@ -24,6 +24,90 @@ Resources:
               Service: guardduty.amazonaws.com
             Action: sts:AssumeRole
 
+      Policies:
+        - PolicyName: SGN-GuardDuty-EC2Staging-InlinePolicy
+          PolicyDocument: {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                      {
+                          "Condition": {
+                              "StringLike": {
+                                  "events:ManagedBy": "malware-protection-plan.guardduty.amazonaws.com"
+                              }
+                          },
+                          "Action": [
+                              "events:PutRule",
+                              "events:DeleteRule",
+                              "events:PutTargets",
+                              "events:RemoveTargets"
+                          ],
+                          "Resource": "arn:aws:events:us-east-1:869935110941:rule/DO-NOT-DELETE-AmazonGuardDutyMalwareProtectionS3*",
+                          "Effect": "Allow",
+                          "Sid": "AllowManagedRuleToSendS3EventsToGuardDuty"
+                      },
+                      {
+                          "Action": [
+                              "events:DescribeRule",
+                              "events:ListTargetsByRule"
+                          ],
+                          "Resource": "arn:aws:events:us-east-1:869935110941:rule/DO-NOT-DELETE-AmazonGuardDutyMalwareProtectionS3*",
+                          "Effect": "Allow",
+                          "Sid": "AllowGuardDutyToMonitorEventBridgeManagedRule"
+                      },
+                      {
+                          "Action": [
+                              "s3:PutObjectTagging",
+                              "s3:GetObjectTagging",
+                              "s3:PutObjectVersionTagging",
+                              "s3:GetObjectVersionTagging"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/*",
+                          "Effect": "Allow",
+                          "Sid": "AllowPostScanTag"
+                      },
+                      {
+                          "Action": [
+                              "s3:PutBucketNotification",
+                              "s3:GetBucketNotification"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging",
+                          "Effect": "Allow",
+                          "Sid": "AllowEnableS3EventBridgeEvents"
+                      },
+                      {
+                          "Action": [
+                              "s3:PutObject"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/malware-protection-resource-validation-object",
+                          "Effect": "Allow",
+                          "Sid": "AllowPutValidationObject"
+                      },
+                      {
+                          "Action": [
+                              "s3:GetObject",
+                              "s3:GetObjectVersion"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/*",
+                          "Effect": "Allow",
+                          "Sid": "AllowMalwareScan"
+                      },
+                      {
+                          "Condition": {
+                              "StringLike": {
+                                  "kms:ViaService": "s3.*.amazonaws.com"
+                              }
+                          },
+                          "Action": [
+                              "kms:GenerateDataKey",
+                              "kms:Decrypt"
+                          ],
+                          "Resource": "arn:aws:kms:us-east-1:869935110941:key/3f12d014-4db6-4f33-89a8-4e1695dc9ab5",
+                          "Effect": "Allow",
+                          "Sid": "AllowDecryptForMalwareScan"
+                      }
+                  ]
+              }
+
   SGNOPSAutomationRole:
     Type: AWS::IAM::Role
     Properties:
@@ -35,6 +119,90 @@ Resources:
             Principal:
               Service: ssm.amazonaws.com
             Action: sts:AssumeRole
+
+      Policies:
+        - PolicyName: SGN-GuardDuty-EC2Staging-InlinePolicy
+          PolicyDocument: {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                      {
+                          "Condition": {
+                              "StringLike": {
+                                  "events:ManagedBy": "malware-protection-plan.guardduty.amazonaws.com"
+                              }
+                          },
+                          "Action": [
+                              "events:PutRule",
+                              "events:DeleteRule",
+                              "events:PutTargets",
+                              "events:RemoveTargets"
+                          ],
+                          "Resource": "arn:aws:events:us-east-1:869935110941:rule/DO-NOT-DELETE-AmazonGuardDutyMalwareProtectionS3*",
+                          "Effect": "Allow",
+                          "Sid": "AllowManagedRuleToSendS3EventsToGuardDuty"
+                      },
+                      {
+                          "Action": [
+                              "events:DescribeRule",
+                              "events:ListTargetsByRule"
+                          ],
+                          "Resource": "arn:aws:events:us-east-1:869935110941:rule/DO-NOT-DELETE-AmazonGuardDutyMalwareProtectionS3*",
+                          "Effect": "Allow",
+                          "Sid": "AllowGuardDutyToMonitorEventBridgeManagedRule"
+                      },
+                      {
+                          "Action": [
+                              "s3:PutObjectTagging",
+                              "s3:GetObjectTagging",
+                              "s3:PutObjectVersionTagging",
+                              "s3:GetObjectVersionTagging"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/*",
+                          "Effect": "Allow",
+                          "Sid": "AllowPostScanTag"
+                      },
+                      {
+                          "Action": [
+                              "s3:PutBucketNotification",
+                              "s3:GetBucketNotification"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging",
+                          "Effect": "Allow",
+                          "Sid": "AllowEnableS3EventBridgeEvents"
+                      },
+                      {
+                          "Action": [
+                              "s3:PutObject"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/malware-protection-resource-validation-object",
+                          "Effect": "Allow",
+                          "Sid": "AllowPutValidationObject"
+                      },
+                      {
+                          "Action": [
+                              "s3:GetObject",
+                              "s3:GetObjectVersion"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/*",
+                          "Effect": "Allow",
+                          "Sid": "AllowMalwareScan"
+                      },
+                      {
+                          "Condition": {
+                              "StringLike": {
+                                  "kms:ViaService": "s3.*.amazonaws.com"
+                              }
+                          },
+                          "Action": [
+                              "kms:GenerateDataKey",
+                              "kms:Decrypt"
+                          ],
+                          "Resource": "arn:aws:kms:us-east-1:869935110941:key/3f12d014-4db6-4f33-89a8-4e1695dc9ab5",
+                          "Effect": "Allow",
+                          "Sid": "AllowDecryptForMalwareScan"
+                      }
+                  ]
+              }
       Policies:
         - PolicyName: SGN-OPS-EC2DataTransfer-InlinePolicy
           PolicyDocument:
@@ -73,6 +241,90 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
+
+      Policies:
+        - PolicyName: SGN-GuardDuty-EC2Staging-InlinePolicy
+          PolicyDocument: {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                      {
+                          "Condition": {
+                              "StringLike": {
+                                  "events:ManagedBy": "malware-protection-plan.guardduty.amazonaws.com"
+                              }
+                          },
+                          "Action": [
+                              "events:PutRule",
+                              "events:DeleteRule",
+                              "events:PutTargets",
+                              "events:RemoveTargets"
+                          ],
+                          "Resource": "arn:aws:events:us-east-1:869935110941:rule/DO-NOT-DELETE-AmazonGuardDutyMalwareProtectionS3*",
+                          "Effect": "Allow",
+                          "Sid": "AllowManagedRuleToSendS3EventsToGuardDuty"
+                      },
+                      {
+                          "Action": [
+                              "events:DescribeRule",
+                              "events:ListTargetsByRule"
+                          ],
+                          "Resource": "arn:aws:events:us-east-1:869935110941:rule/DO-NOT-DELETE-AmazonGuardDutyMalwareProtectionS3*",
+                          "Effect": "Allow",
+                          "Sid": "AllowGuardDutyToMonitorEventBridgeManagedRule"
+                      },
+                      {
+                          "Action": [
+                              "s3:PutObjectTagging",
+                              "s3:GetObjectTagging",
+                              "s3:PutObjectVersionTagging",
+                              "s3:GetObjectVersionTagging"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/*",
+                          "Effect": "Allow",
+                          "Sid": "AllowPostScanTag"
+                      },
+                      {
+                          "Action": [
+                              "s3:PutBucketNotification",
+                              "s3:GetBucketNotification"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging",
+                          "Effect": "Allow",
+                          "Sid": "AllowEnableS3EventBridgeEvents"
+                      },
+                      {
+                          "Action": [
+                              "s3:PutObject"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/malware-protection-resource-validation-object",
+                          "Effect": "Allow",
+                          "Sid": "AllowPutValidationObject"
+                      },
+                      {
+                          "Action": [
+                              "s3:GetObject",
+                              "s3:GetObjectVersion"
+                          ],
+                          "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/*",
+                          "Effect": "Allow",
+                          "Sid": "AllowMalwareScan"
+                      },
+                      {
+                          "Condition": {
+                              "StringLike": {
+                                  "kms:ViaService": "s3.*.amazonaws.com"
+                              }
+                          },
+                          "Action": [
+                              "kms:GenerateDataKey",
+                              "kms:Decrypt"
+                          ],
+                          "Resource": "arn:aws:kms:us-east-1:869935110941:key/3f12d014-4db6-4f33-89a8-4e1695dc9ab5",
+                          "Effect": "Allow",
+                          "Sid": "AllowDecryptForMalwareScan"
+                      }
+                  ]
+              }
       Policies:
         - PolicyName: SSMNotificationLambdaPolicy
           PolicyDocument:
