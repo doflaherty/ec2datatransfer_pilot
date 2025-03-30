@@ -37,14 +37,14 @@ Resources:
                   - s3:PutObject
                   - s3:PutObjectAcl
                 Resource:
-                  - arn:aws:s3:::sgn-datatransfer-stage/Reports/*
+                  - arn:aws:s3:::sgn-0ps-ec2staging/Reports/*
               - Sid: WriteObjectTags
                 Effect: Allow
                 Action:
                   - s3:PutObjectTagging
                   - s3:GetObjectTagging
                 Resource:
-                  - arn:aws:s3:::sgn-datatransfer-stage/*
+                  - arn:aws:s3:::sgn-0ps-ec2staging/*
               - Sid: S3ReadWriteInboundOutbound
                 Effect: Allow
                 Action:
@@ -52,12 +52,12 @@ Resources:
                   - s3:GetObject
                   - s3:DeleteObject
                 Resource:
-                  - arn:aws:s3:::sgn-datatransfer-stage/Inbound/*
-                  - arn:aws:s3:::sgn-datatransfer-stage/Outbound/*
+                  - arn:aws:s3:::sgn-0ps-ec2staging/Inbound/*
+                  - arn:aws:s3:::sgn-0ps-ec2staging/Outbound/*
               - Sid: ListBucketAccess
                 Effect: Allow
                 Action: s3:ListBucket
-                Resource: arn:aws:s3:::sgn-datatransfer-stage
+                Resource: arn:aws:s3:::sgn-0ps-ec2staging
 
 Outputs:
   AutomationRole:
