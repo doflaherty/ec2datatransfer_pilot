@@ -1,0 +1,37 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": "ec2:DescribeInstances",
+            "Resource": "*",
+            "Effect": "Allow"
+        },
+        {
+            "Action": [
+                "ssm:DescribeInstanceInformation",
+                "ssm:SendCommand",
+                "ssm:ListCommands",
+                "ssm:GetCommandInvocation",
+                "ssm:ListCommandInvocations"
+            ],
+            "Resource": "*",
+            "Effect": "Allow"
+        },
+        {
+            "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl"
+            ],
+            "Resource": "arn:aws:s3:::sgn-0ps-ec2staging/Reports/*",
+            "Effect": "Allow"
+        },
+        {
+            "Action": "lambda:InvokeFunction",
+            "Resource": [
+                "arn:aws:lambda:us-east-1:869935110941:function:SSMNotification",
+                "arn:aws:lambda:us-east-1:869935110941:function:S3FolderStructureCreator"
+            ],
+            "Effect": "Allow"
+        }
+    ]
+}

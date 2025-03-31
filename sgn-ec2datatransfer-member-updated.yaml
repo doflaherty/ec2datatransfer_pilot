@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Member stack to allow EC2 to S3 data transfers via automation role.
+
+Resources:
+  SGNOPSAutomationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SGN-OPS-EC2DataTransfer-AutomationRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ssm.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SGN-OPS-EC2DataTransfer-InlinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: EC2Describe
+                Effect: Allow
+                Action: ec2:DescribeInstances
+                Resource: "*"
+              - Sid: SSMAccess
+                Effect: Allow
+                Action:
+                  - ssm:DescribeInstanceInformation
+                  - ssm:SendCommand
+                  - ssm:ListCommands
+                  - ssm:GetCommandInvocation
+                  - ssm:ListCommandInvocations
+                Resource: "*"
+              - Sid: S3PutReports
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                Resource:
+                  - arn:aws:s3:::sgn-datatransfer-stage/Reports/*
+              - Sid: WriteObjectTags
+                Effect: Allow
+                Action:
+                  - s3:PutObjectTagging
+                  - s3:GetObjectTagging
+                Resource:
+                  - arn:aws:s3:::sgn-datatransfer-stage/*
+              - Sid: S3ReadWriteInboundOutbound
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource:
+                  - arn:aws:s3:::sgn-datatransfer-stage/Inbound/*
+                  - arn:aws:s3:::sgn-datatransfer-stage/Outbound/*
+              - Sid: ListBucketAccess
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: arn:aws:s3:::sgn-datatransfer-stage
+
+Outputs:
+  AutomationRole:
+    Description: IAM Role for EC2 Data Transfer Automation
+    Value: !Ref SGNOPSAutomationRole

@@ -1,0 +1,84 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "InboundStagingAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:GetObjectAcl",
+                "s3:GetObjectTagging"
+            ],
+            "Resource": [
+                "arn:aws:s3:::sgn-0ps-ec2staging/Inbound/*"
+            ]
+        },
+        {
+            "Sid": "BucketStagingAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::sgn-0ps-ec2staging"
+            ]
+        },
+        {
+            "Sid": "ReportsUploadAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl"
+            ],
+            "Resource": [
+                "arn:aws:s3:::sgn-0ps-ec2staging/Reports/",
+                "arn:aws:s3:::sgn-0ps-ec2staging/Reports/*"
+            ]
+        },
+        {
+            "Sid": "InboundUploadAndTaggingAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl",
+                "s3:PutObjectTagging",
+                "s3:GetObjectTagging"
+            ],
+            "Resource": [
+                "arn:aws:s3:::sgn-0ps-ec2staging/Inbound/*"
+            ]
+        },
+        {
+            "Sid": "OutboundUploadAndTaggingAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl",
+                "s3:PutObjectTagging",
+                "s3:GetObjectTagging",
+                "s3:GetObject",
+                "s3:GetObjectVersion"
+            ],
+            "Resource": [
+                "arn:aws:s3:::sgn-0ps-ec2staging/Outbound/*"
+            ]
+        },
+        {
+            "Sid": "OpsStagingAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl",
+                "s3:PutObjectTagging",
+                "s3:GetObjectTagging",
+                "s3:GetObject",
+                "s3:GetObjectVersion",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::sgn-0ps-ec2staging",
+                "arn:aws:s3:::sgn-0ps-ec2staging/Outbound/*"
+            ]
+        }
+    ]
+}
