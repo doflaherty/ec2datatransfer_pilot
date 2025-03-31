@@ -1,3 +1,15 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack 2 - S3 Bucket and GuardDuty Policy for EC2 Data Transfer
+
+Parameters:
+  TeamName:
+    Type: String
+    AllowedValues:
+      - enzen
+      - sgn
+      - cgi
+    Description: Team name used for naming the S3 bucket.
+
 Resources:
 
   S3DataTransferBucket:
@@ -16,8 +28,8 @@ Resources:
             Effect: Deny
             Principal: "*"
             Action:
-              - s3:GetObject
-              - s3:GetObjectVersion
+              - "s3:GetObject"
+              - "s3:GetObjectVersion"
             Resource: !Sub "arn:aws:s3:::${S3DataTransferBucket}/*"
             Condition:
               StringNotLike:
@@ -37,36 +49,6 @@ Resources:
             Resource:
               - !Sub "arn:aws:s3:::${S3DataTransferBucket}"
               - !Sub "arn:aws:s3:::${S3DataTransferBucket}/*"
-
-          - Sid: AllowPutAndListFromAutomationRole
-            Effect: Allow
-            Principal:
-              AWS: "arn:aws:iam::869935110941:role/SGN-OPS-EC2DataTransfer-AutomationRole"
-            Action:
-              - s3:PutObject
-              - s3:PutObjectAcl
-              - s3:ListBucket
-            Resource:
-              - !Sub "arn:aws:s3:::${S3DataTransferBucket}"
-              - !Sub "arn:aws:s3:::${S3DataTransferBucket}/Outbound/*"
-              - !Sub "arn:aws:s3:::${S3DataTransferBucket}/Reports/*"
-
-          - Sid: AllowPutFromEC2InstanceRole
-            Effect: Allow
-            Principal:
-              AWS: "arn:aws:iam::869935110941:role/sgn_role_ec2_maximo_web"
-            Action:
-              - s3:PutObject
-              - s3:PutObjectAcl
-            Resource: !Sub "arn:aws:s3:::${S3DataTransferBucket}/*"
-
-          - Sid: AllowListFromEC2Role
-            Effect: Allow
-            Principal:
-              AWS: "arn:aws:iam::869935110941:role/sgn_role_ec2_maximo_web"
-            Action:
-              - s3:ListBucket
-            Resource: !Sub "arn:aws:s3:::${S3DataTransferBucket}"
 
   S3FolderStructureCustomResource:
     Type: Custom::S3FolderSetup

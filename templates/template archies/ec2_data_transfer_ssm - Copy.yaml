@@ -1,0 +1,255 @@
+schemaVersion: '0.3'
+assumeRole: arn:aws:iam::869935110941:role/SGN-OPS-EC2DataTransfer-AutomationRole
+parameters:
+  Direction:
+    type: String
+    description: 'Direction of copy: inbound (S3 to local) or outbound (local to S3).'
+    allowedValues:
+      - inbound
+      - outbound
+  FileName:
+    type: String
+    description: File name for the file to be copied. Wildcards are accepted and can result in multiple files being copied. A blank value will lead to all files within the directory being copied.
+    default: '*'
+    allowedPattern: ^(?!^$)(?!.*\/)[^\/:*?"<>|]*\*?[^\/:*?"<>|]*$
+  SourcePath:
+    type: String
+    description: Directory or directories to locate the files to copy.
+    default: ''
+    allowedPattern: ^(\/(?!.*\/$)[^:*?"<>|*]+(\/[^:*?"<>|*]+)*)?$
+  TargetPath:
+    type: String
+    description: Directory or directories to write the target files to. If empty, the same path as the source will be used.
+    default: ''
+    allowedPattern: ^(\/(?!.*\/$)[^:*?"<>|*]+(\/[^:*?"<>|*]+)*)?$
+  InstanceIds:
+    type: List<AWS::EC2::Instance::Id>
+    description: EC2 instance IDs that the copy will execute against. Multiple EC2s can be selected.
+  ChangeRequest:
+    type: String
+    description: Optional change request identifier that must start with 'CR' followed by 4 digits.
+    allowedPattern: ^(?i:CR\d{4})?$
+    default: ''
+  Comment:
+    type: String
+    description: Brief reason why this copy is being made or comment on the transfer.
+    default: ''
+  Team:
+    type: String
+    allowedValues:
+      - enzen
+      - sgn
+      - cgi
+variables:
+  LinuxLocalLocation:
+    type: String
+    description: Local Linux filesystem base directory.
+    default: /tmp
+  WindowsLocalLocation:
+    type: String
+    description: Local Windows filesystem base directory.
+    default: C:/Windows/Temp
+  OutputReport:
+    type: String
+    description: Variable to incrementally collect progress for a storable report.
+    default: ''
+  BucketName:
+    type: String
+    default: 0ps-ec2staging
+mainSteps:
+  - name: NotifyDarrenStart
+    action: aws:invokeLambdaFunction
+    nextStep: ApprovalRequired
+    isEnd: false
+    inputs:
+      FunctionName: SSMNotification
+      Payload: '{"ExecutionId": "{{ automation:EXECUTION_ID }}", "Direction": "{{ Direction }}", "Team": "{{ Team }}", "Status": "Started"}'
+  - name: ApprovalRequired
+    action: aws:branch
+    inputs:
+      Choices:
+        - NextStep: Approve
+          Variable: '{{ Direction }}'
+          StringEquals: inbound
+        - NextStep: Approve
+          Variable: '{{ Direction }}'
+          StringEquals: outbound
+      Default: ForEachEC2Instance
+  - name: Approve
+    action: aws:approve
+    nextStep: NotifyDarrenApproval
+    isEnd: false
+    inputs:
+      Message: The following request to transfer files {{ Direction }} for the following EC2s={ InstanceIds }}, in relation to Change Request={ ChangeRequest }} and justification={{ Comment }}
+      Approvers:
+        - arn:aws:iam::869935110941:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_25441b779c61b618
+  - name: NotifyDarrenApproval
+    action: aws:invokeLambdaFunction
+    nextStep: ForEachEC2Instance
+    isEnd: false
+    inputs:
+      FunctionName: SSMNotification
+      Payload: '{"ExecutionId": "{{ automation:EXECUTION_ID }}", "Direction": "{{ Direction }}", "Team": "{{ Team }}", "Status": "Approved"}'
+  - name: ForEachEC2Instance
+    action: aws:loop
+    isEnd: true
+    inputs:
+      Iterators: '{{ InstanceIds }}'
+      Steps:
+        - name: ProcessEC2Instance
+          action: aws:executeAwsApi
+          nextStep: GetPlatform
+          isEnd: false
+          inputs:
+            Service: ec2
+            Api: DescribeInstances
+            InstanceIds:
+              - '{{ ForEachEC2Instance.CurrentIteratorValue }}'
+        - name: GetPlatform
+          action: aws:executeAwsApi
+          nextStep: SelectOSPlatform
+          isEnd: false
+          inputs:
+            Service: ssm
+            Api: DescribeInstanceInformation
+            Filters:
+              - Key: InstanceIds
+                Values:
+                  - '{{ ForEachEC2Instance.CurrentIteratorValue }}'
+          outputs:
+            - Name: PlatformType
+              Selector: $.InstanceInformationList[0].PlatformType
+              Type: String
+        - name: SelectOSPlatform
+          action: aws:branch
+          inputs:
+            Choices:
+              - NextStep: RunCommandOnWindowsInstance
+                Variable: '{{ GetPlatform.PlatformType }}'
+                StringEquals: Windows
+            Default: RunCommandOnLinuxInstance
+        - name: RunCommandOnLinuxInstance
+          action: aws:runCommand
+          nextStep: ReportLinuxOutput
+          isEnd: false
+          onFailure: step:ReportLinuxOutput
+          inputs:
+            DocumentName: AWS-RunShellScript
+            Parameters:
+              commands:
+                - '#!/bin/bash'
+                - BUCKET_NAME="{{ Team }}-{{ variable:BucketName }}"
+                - TEAM="{{ Team }}"
+                - DIRECTION="{{ Direction }}"
+                - INSTANCE="{{ ForEachEC2Instance.CurrentIteratorValue }}"
+                - EXECUTION_ID="{{ automation:EXECUTION_ID }}"
+                - TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+                - NORMALIZED_TARGET_PATH=$(echo "{{ TargetPath }}" | sed "s:^/::" | sed "s:/$::")
+                - if [ "$DIRECTION" == "inbound" ]; then
+                - '    S3_PATH="s3://${BUCKET_NAME}/Inbound/${NORMALIZED_TARGET_PATH}"'
+                - '    LOCAL_PATH="/tmp/Inbound/"'
+                - elif [ "$DIRECTION" == "outbound" ]; then
+                - '    S3_PATH="s3://${BUCKET_NAME}/Outbound/${TEAM}/${INSTANCE}/filetransfer_${TIMESTAMP}/"'
+                - '    LOCAL_PATH="/tmp/Outbound/"'
+                - fi
+                - 'echo "DEBUG: Copying $DIRECTION files from $LOCAL_PATH to $S3_PATH"'
+                - '[ -d "$LOCAL_PATH" ] || { echo "ERROR: Local path $LOCAL_PATH does not exist"; exit 1; }'
+                - aws s3 cp "$LOCAL_PATH" "$S3_PATH" --recursive --exclude="*" --include="{{ FileName }}"
+                - if [ $? -ne 0 ]; then
+                - '    echo "ERROR: S3 Copy failed for $S3_PATH"'
+                - '    exit 1'
+                - fi
+                - echo "S3 Copy Completed Successfully"
+            InstanceIds: '{{ ForEachEC2Instance.CurrentIteratorValue }}'
+          outputs:
+            - Type: String
+              Name: LinuxCopyOutput
+              Selector: $.Payload
+        - name: ReportLinuxOutput
+          action: aws:updateVariable
+          nextStep: WriteOutputToS3
+          isEnd: false
+          inputs:
+            Name: variable:OutputReport
+            Value: |-
+              {{ variable:OutputReport }}
+              Operating System: Linux
+              Outcome: {{ RunCommandOnLinuxInstance.Status }}
+              Output:
+              {{ RunCommandOnLinuxInstance.Output }}
+        - name: ReportWindowsOutput
+          action: aws:updateVariable
+          nextStep: WriteOutputToS3
+          isEnd: false
+          inputs:
+            Name: variable:OutputReport
+            Value: |-
+              {{ variable:OutputReport }}
+              Operating System: Windows
+              Outcome: {{ RunCommandOnWindowsInstance.Status }}
+              Output:
+              {{ RunCommandOnWindowsInstance.Output }}
+        - name: WriteOutputToS3
+          action: aws:executeScript
+          isEnd: true
+          inputs:
+            Runtime: python3.8
+            Handler: script_handler
+            InputPayload:
+              Team: '{{ Team }}'
+              BucketName: '{{ variable:BucketName }}'
+              OutputReport: '{{ variable:OutputReport }}'
+              Direction: '{{ Direction }}'
+              ExecutionId: '{{ automation:EXECUTION_ID }}'
+              InstanceId: '{{ ForEachEC2Instance.CurrentIteratorValue }}'
+            Script: |-
+              import boto3
+
+              def script_handler(event, context):
+                  s3_client = boto3.client('s3')
+                  team = event.get('Team', 'unknown')
+                  bucket_name = f"{team}-{event.get('BucketName', '0ps-ec2staging')}"
+                  direction = event.get('Direction', 'unknown')
+                  instance_id = event.get('InstanceId', 'unknown')
+                  execution_id = event.get('ExecutionId', 'unknown')
+
+                  object_key = f"Reports/{team}/Copy_{instance_id}-{direction}_{execution_id}.txt"
+                  formatted_output_report = event.get('OutputReport', 'No report data available.').replace('\\n', '\n')
+
+                  try:
+                      response = s3_client.put_object(
+                          Bucket=bucket_name,
+                          Key=object_key,
+                          Body=formatted_output_report
+                      )
+                      return {"S3Response": response}
+                  except Exception as e:
+                      raise RuntimeError(f"Failed to upload report to S3: {str(e)}")
+          outputs:
+            - Name: OutputReportContent
+              Selector: $.Payload.OutputReportContent
+              Type: String
+        - name: RunCommandOnWindowsInstance
+          action: aws:runCommand
+          nextStep: ReportWindowsOutput
+          isEnd: false
+          onFailure: step:ReportWindowsOutput
+          inputs:
+            DocumentName: AWS-RunPowerShellScript
+            Parameters:
+              commands:
+                - $env:PATH += ";C:\\Program Files\\Amazon\\AWSCLIV2"
+                - try {
+                - '    if (''{{ Direction }}'' -eq ''inbound'') {'
+                - '        $output = aws s3 cp "s3://{{ Team }}-{{ variable:BucketName }}/Inbound{{ SourcePath }}/" "{{ variable:WindowsLocalLocation }}\Inbound\" --recursive --exclude ''*'' --include "{{ FileName }}" 2>&1'
+                - '    } else {'
+                - '        $output = aws s3 cp "{{ variable:WindowsLocalLocation }}\Outbound\{{ SourcePath }}\" "s3://{{ Team }}-{{ variable:BucketName }}/Outbound/{{ ForEachEC2Instance.CurrentIteratorValue }}/{{ TargetPath }}/" --recursive --exclude ''*'' --include "{{ FileName }}" 2>&1'
+                - '    }'
+                - '    if ($LASTEXITCODE -ne 0) {'
+                - '        throw "AWS CLI command failed with exit code $LASTEXITCODE. Output: $output"'
+                - '    }'
+                - '} catch {'
+                - '    Write-Error $_.Exception.Message'
+                - '    exit 1'
+                - '}'
+            InstanceIds: '{{ ForEachEC2Instance.CurrentIteratorValue }}'
